@@ -1,0 +1,14 @@
+# This file can be used to store credentials for local dev / testing
+# Rename to `config.py` and replace the values below with your own
+
+from typing import Dict
+
+snowpark_config: Dict[str, int | str] = {
+    'account': 'sw09563.us-east-1',
+    'user': 'SNOWPARK_USER',
+    'password': 'YOUR_PASSWORD_HERE',
+    'role': 'SNOWPARK_DEV', 
+    'warehouse': 'SNOWPARK_WH',
+    'database': 'FORECASTING',
+    'schema': 'DEV'
+}

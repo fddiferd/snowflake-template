@@ -1,0 +1,84 @@
+# TCG SNOWPARK ACCEELERATOR
+
+# INITIAL SNOWPARK SETUP
+
+**CREATE USER**
+```sql
+CREATE USER IF NOT EXISTS SNOWPARK_USER
+  PASSWORD = <PASSWORD>
+  LOGIN_NAME = 'SNOWPARK_USER'
+  DEFAULT_ROLE = 'SNOWPARK_DEV'
+  MUST_CHANGE_PASSWORD = FALSE
+  COMMENT = 'User for Snowpark repositorys';
+```
+
+**CREATE ROLE**
+```sql
+CREATE ROLE IF NOT EXISTS SNOWPARK_DEV;
+GRANT ROLE SNOWPARK_DEV TO USER SNOWPARK_USER;
+```
+
+**CREATE WAREHOUSE**
+```sql
+CREATE WAREHOUSE IF NOT EXISTS SNOWPARK_WH 
+  WAREHOUSE_SIZE = 'SMALL' 
+  AUTO_SUSPEND = 300  -- number of seconds until warehouse suspends
+  AUTO_RESUME = TRUE
+  INITIALLY_SUSPENDED = TRUE;
+GRANT USAGE ON WAREHOUSE SNOWPARK_WH TO ROLE SNOWPARK_DEV;
+```
+
+**CREATE NETWORK POLICY**
+```sql
+CREATE OR REPLACE NETWORK POLICY SNOWPARK_ALLOWED_IPS
+  ALLOWED_IP_LIST = ( '98.168.72.82' )
+  BLOCKED_IP_LIST = ();
+ALTER USER SNOWPARK_USER SET NETWORK_POLICY = SNOWPARK_ALLOWED_IPS;
+```
+
+**GENERATE PRIVATE KEY**
+- Generate a 2048-bit RSA private key (PEM format)
+```
+openssl genrsa -out rsa_key.pem 2048
+```
+- Convert the private key to PKCS#8 format (unencrypted)
+```
+openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
+    -in rsa_key.pem -out rsa_key.p8
+```
+- Generate the matching public key
+```
+openssl rsa -in rsa_key.pem -pubout -out rsa_key.pub
+```
+- Upload the public key (rsa_key.pub) to your Snowflake user profile
+```sql
+ALTER USER SNOWPARK_USER
+SET RSA_PUBLIC_KEY='<contents of rsa_key.pub>';
+```
+
+## PROJECT SETUP
+
+**CREATE DATABASE & SCHEMA**
+```sql
+create database if not exists FORECASTING;
+use database FORECASTING;
+create schema if not exists dev;
+use schema DEV;
+```
+
+**GIVE ROLE ACCESS TO DATABASE & SCHEMA**
+```sql
+GRANT USAGE ON SCHEMA FORECASTING.DEV TO ROLE SNOWPARK_DEV;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA FORECASTING.DEV TO ROLE SNOWPARK_DEV;
+GRANT ALL PRIVILEGES ON ALL VIEWS IN SCHEMA FORECASTING.DEV TO ROLE SNOWPARK_DEV;
+GRANT ALL PRIVILEGES ON FUTURE TABLES IN SCHEMA FORECASTING.DEV TO ROLE SNOWPARK_DEV;
+GRANT ALL PRIVILEGES ON FUTURE VIEWS IN SCHEMA FORECASTING.DEV TO ROLE SNOWPARK_DEV;
+```
+
+## REFERENCES
+
+**REPO**
+    - https://github.com/snowflake-labs/snowpark-devops
+
+**YOUTUBE VIDEO**
+    - https://www.youtube.com/watch?v=Aw-l18bMr94 
