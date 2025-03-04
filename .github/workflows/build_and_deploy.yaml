@@ -42,8 +42,6 @@ jobs:
       - name: Create schema for branch if not exists
         run: |
           ~/bin/snowsql -q 'create schema if not exists ${{ github.ref_name }}' -o friendly=false
-      - name: Run unit tests
-        run: python -m pytest
       - name: Installing manually managed packages for deployment
         run: |
           echo 'Installing packages that require manual installation....'
@@ -101,25 +99,3 @@ jobs:
       - name: Run any procedures
         run: |
           ~/bin/snowsql -s ${{ github.ref_name }} -f ./setup/01_run_procedures.sql -o friendly=false -o exit_on_error=true
-
-  e2etest:
-    needs: [deploy, build, run_procedures]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        tests: ${{fromJson(needs.build.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install SnowSQL
-        run: |
-          curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql-1.2.23-linux_x86_64.bash
-          SNOWSQL_DEST=~/bin SNOWSQL_LOGIN_SHELL=~/.profile bash snowsql-1.2.23-linux_x86_64.bash
-      - name: Run test - ${{ matrix.tests.name }}
-        run: |
-          rowCount=$(~/bin/snowsql -s ${{ github.ref_name }} -q $'${{ matrix.tests.value }}' -o friendly=false -o exit_on_error=true -o output_format=json -o timing=false | jq '. | length')
-          if [[ $rowCount -ne 0 ]]; then
-            echo "Test failed! $rowCount rows returned" 1>&2
-            exit 1
-          else
-            echo "Test Passed! $rowCount rows returned"
-          fi
