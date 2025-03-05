@@ -3,7 +3,7 @@ from typing import Any, List
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from snowflake.snowpark import Session, DataFrame, Table
-from snowflake.snowpark.types import PandasSeriesType, IntegerType, FloatType
+from snowflake.snowpark.types import PandasSeriesType, IntegerType, FloatType, StringType
 from snowflake.snowpark.functions import col, year, max, lit
 import pandas as pd
 
@@ -16,7 +16,7 @@ def run(session: Session) -> str:
 
     generate_new_table_with_predicted(filtered_df, model, session)
     register_udf(model, session)
-    
+
     return str(OUTPUTS)
 
 def clean_df(input_df: pd.DataFrame) -> pd.DataFrame:
@@ -54,19 +54,19 @@ def gross_adds_model(input_pd: pd.DataFrame) -> LinearRegression:
 
 def register_udf(model, session) -> None:
 
-    def predict_gross_adds(ps: pd.Series) -> pd.Series:
-        return ps.transform(lambda x: model.predict([[x]])[0].round(2).astype(float))
-    
+    def predict_gross_adds(date_str: pd.Series) -> pd.Series:
+        return date_str.transform(lambda x: model.predict([[datetime.strptime(x, '%Y-%m-%d').toordinal()]])[0].round(2).astype(float))
     session.udf.register(
         predict_gross_adds,
         return_type=PandasSeriesType(FloatType()),
-        input_types=[PandasSeriesType(IntegerType())],
+        input_types=[PandasSeriesType(StringType())],
         packages= ["pandas","scikit-learn"],
         is_permanent=True, 
         name="predict_gross_adds", 
         replace=True,
         stage_location="@deploy"
     )
+    print('UDF registered')
     OUTPUTS.append('UDF registered')
 
 def generate_new_table_with_predicted(input_df: pd.DataFrame, model: LinearRegression, session: Session) -> None:
